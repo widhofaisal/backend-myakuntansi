@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>BACKEND : All DB</title>
+    <style>
+      body {
+        padding: 20px;
+      }
+
+      table,
+      td,
+      th {
+        border: 1px solid;
+        padding: 10px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Table Users</h1>
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Fullname</th>
+        <th>Username</th>
+        <th>Password</th>
+        <th>Role</th>
+      </tr>
+      {{range .Users}}
+      <tr>
+        <td>{{.ID}}</td>
+        <td>{{.Fullname}}</td>
+        <td>{{.Username}}</td>
+        <td>{{.Password}}</td>
+        <td>{{.Role}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Projects</h1>
+    <table>
+      <tr>
+        <th>ProjectCode</th>
+        <th>ProjectName</th>
+        <th>Address</th>
+        <th>City</th>
+        <th>StartDate</th>
+        <th>Deadline</th>
+        <th>IsDone</th>
+      </tr>
+      {{range .Projects}}
+      <tr>
+        <td>{{.ProjectCode}}</td>
+        <td>{{.ProjectName}}</td>
+        <td>{{.Address}}</td>
+        <td>{{.City}}</td>
+        <td>{{.StartDate}}</td>
+        <td>{{.Deadline}}</td>
+        <td>{{.IsDone}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Suppliers</h1>
+    <table>
+      <tr>
+        <th>SupplierCode</th>
+        <th>SupplierName</th>
+        <th>Address</th>
+        <th>City</th>
+      </tr>
+      {{range .Suppliers}}
+      <tr>
+        <td>{{.SupplierCode}}</td>
+        <td>{{.SupplierName}}</td>
+        <td>{{.Address}}</td>
+        <td>{{.City}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Orders</h1>
+    <table>
+      <tr>
+        <th>OrderCode</th>
+        <th>ProjectCode</th>
+        <th>SupplierCode</th>
+        <th>PaymentDue</th>
+        <th>Paid</th>
+        <th>Delivered</th>
+        <th>CreatedBy</th>
+        <th>UpdatedBy</th>
+        <th>DeletedBy</th>
+      </tr>
+      {{range .Orders}}
+      <tr>
+        <td>{{.OrderCode}}</td>
+        <td>{{.ProjectCode}}</td>
+        <td>{{.SupplierCode}}</td>
+        <td>{{.PaymentDue}}</td>
+        <td>{{.Paid}}</td>
+        <td>{{.Delivered}}</td>
+        <td>{{.CreatedBy}}</td>
+        <td>{{.UpdatedBy}}</td>
+        <td>{{.DeletedBy}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Order Details</h1>
+    <table>
+      <tr>
+        <th>OrderDetailCode</th>
+        <th>OrderCode</th>
+        <th>MaterialId</th>
+        <th>Quantity</th>
+        <th>UnitPrice</th>
+        <th>AmountReceived</th>
+        <th>CreatedBy</th>
+        <th>UpdatedBy</th>
+        <th>DeletedBy</th>
+      </tr>
+      {{range .OrderDetails}}
+      <tr>
+        <td>{{.OrderDetailCode}}</td>
+        <td>{{.OrderCode}}</td>
+        <td>{{.MaterialId}}</td>
+        <td>{{.Quantity}}</td>
+        <td>{{.UnitPrice}}</td>
+        <td>{{.AmountReceived}}</td>
+        <td>{{.CreatedBy}}</td>
+        <td>{{.UpdatedBy}}</td>
+        <td>{{.DeletedBy}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Receptions</h1>
+    <table>
+      <tr>
+        <th>ReceptionCode</th>
+        <th>DeliveryReceiptCode</th>
+        <th>DeliveryReceipt</th>
+        <th>CreatedBy</th>
+        <th>UpdatedBy</th>
+        <th>DeletedBy</th>
+      </tr>
+      {{range .Receptions}}
+      <tr>
+        <td>{{.ReceptionCode}}</td>
+        <td>{{.DeliveryReceiptCode}}</td>
+        <td>{{.DeliveryReceipt}}</td>
+        <td>{{.CreatedBy}}</td>
+        <td>{{.UpdatedBy}}</td>
+        <td>{{.DeletedBy}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Reception Details</h1>
+    <table>
+      <tr>
+        <th>ReceptionDetailCode</th>
+        <th>ReceptionCode</th>
+        <th>OrderDetailCode</th>
+        <th>Quantity</th>
+        <th>CreatedBy</th>
+        <th>UpdatedBy</th>
+        <th>DeletedBy</th>
+      </tr>
+      {{range .ReceptionDetails}}
+      <tr>
+        <td>{{.ReceptionDetailCode}}</td>
+        <td>{{.ReceptionCode}}</td>
+        <td>{{.OrderDetailCode}}</td>
+        <td>{{.Quantity}}</td>
+        <td>{{.CreatedBy}}</td>
+        <td>{{.UpdatedBy}}</td>
+        <td>{{.DeletedBy}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Documents</h1>
+    <table>
+      <tr>
+        <th>DocumentsCode</th>
+        <th>Category</th>
+        <th>FileName</th>
+        <th>OrderCode</th>
+        <th>CreatedBy</th>
+        <th>UpdatedBy</th>
+        <th>DeletedBy</th>
+      </tr>
+      {{range .Documents}}
+      <tr>
+        <td>{{.DocumentCode}}</td>
+        <td>{{.Category}}</td>
+        <td>{{.FileName}}</td>
+        <td>{{.OrderCode}}</td>
+        <td>{{.CreatedBy}}</td>
+        <td>{{.UpdatedBy}}</td>
+        <td>{{.DeletedBy}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <h1>Table Materials</h1>
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>MaterialName</th>
+        <th>Unit</th>
+      </tr>
+      {{range .Materials}}
+      <tr>
+        <td>{{.ID}}</td>
+        <td>{{.MaterialName}}</td>
+        <td>{{.Unit}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <br />
+    <hr />
+
+    <!-- END -->
+  </body>
+</html>
