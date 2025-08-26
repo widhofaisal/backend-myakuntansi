@@ -40,8 +40,10 @@ func New() *echo.Echo {
 	auth.PUT("/projects/:id", controller.UpdateProject)
 	auth.DELETE("/projects/:id", controller.DeleteProject)
 
-	auth.POST("/items", controller.CreateItem)
-	auth.GET("/items_and_folders/:id", controller.GetAllItemsAndFolders)
+	// auth.POST("/items", controller.CreateItem)
+	auth.POST("/file", controller.CreateFile)
+	auth.POST("/folder", controller.CreateFolder)
+	// auth.GET("/items_and_folders/:id", controller.GetAllItemsAndFolders)
 	auth.GET("/items", controller.GetAllItems)
 	auth.GET("/items/:id", controller.GetItemByID)
 	auth.PUT("/items/:id", controller.UpdateItem)

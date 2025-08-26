@@ -28,7 +28,9 @@ const (
 	ItemTypePdf    ItemType = "pdf"
 	ItemTypeJpg    ItemType = "jpg"
 	ItemTypePng    ItemType = "png"
+	ItemTypeOther  ItemType = "other" // <<-- untuk semua jenis file selain 3 di atas
 )
+
 
 type Item struct {
 	gorm.Model `json:"-"`

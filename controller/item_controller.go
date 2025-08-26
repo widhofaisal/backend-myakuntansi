@@ -5,72 +5,229 @@ import (
 	"backend-file-management/model"
 	"backend-file-management/utils"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
 // CreateItem handles POST /api/auth/item
-func CreateItem(c echo.Context) error {
-	var input model.Item
+// func CreateItem(c echo.Context) error {
+// 	var input model.Item
 
-	if err := c.Bind(&input); err != nil {
-		return utils.SendError(c, http.StatusBadRequest, "Bad request", err.Error())
-	}
+// 	// Ambil field dari form
+// 	input.Name = c.FormValue("name")
+// 	input.Type = model.ItemType(c.FormValue("type"))
 
-	// Validasi field wajib
-	if input.Name == "" || input.Type == "" {
-		log.Print(color.RedString("empty fields in create item"))
-		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Name and Type are required")
-	}
+// 	if parentID := c.FormValue("parent_id"); parentID != "" {
+// 		id, err := strconv.Atoi(parentID)
+// 		if err != nil {
+// 			log.Println("Invalid parent_id:", err)
+// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Invalid parent_id")
+// 		}
+// 		uid := uint(id)
+// 		input.ParentID = &uid
+// 	}
 
-	// Validasi unique
-	if err := config.DB.Where("name = ?", input.Name).Where("parent_id = ?", input.ParentID).First(&model.Item{}).Error; err == nil {
-		log.Print(color.RedString("item name already exists"))
-		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Item name already exists")
-	}
+// 	// Debug
+// 	log.Println("=== Form Values ===")
+// 	log.Println("Name:", input.Name)
+// 	log.Println("Type:", input.Type)
+// 	log.Println("ParentID:", input.ParentID)
 
-	// Validasi tipe yang diperbolehkan
-	allowedTypes := map[model.ItemType]bool{
-		model.ItemTypeFolder: true,
-		model.ItemTypePdf:    true,
-		model.ItemTypeJpg:    true,
-		model.ItemTypePng:    true,
-	}
-	if !allowedTypes[input.Type] {
-		log.Print(color.RedString("invalid item type"))
-		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Invalid item type")
-	}
+// 	// Validasi field wajib
+// 	if input.Name == "" || input.Type == "" {
+// 		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Name and Type are required")
+// 	}
 
-	// Validasi parent_id (jika tidak null)
-	if input.ParentID != nil {
-		var parent model.Item
-		if err := config.DB.First(&parent, *input.ParentID).Error; err != nil {
-			log.Print(color.RedString("invalid parent_id"))
-			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent folder not found")
+// 	// Kalau bukan folder → wajib ada file
+// 	if input.Type != model.ItemTypeFolder {
+// 		fileHeader, err := c.FormFile("file")
+// 		if err != nil {
+// 			log.Println("No file uploaded:", err)
+// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "File is required for non-folder items")
+// 		}
+
+// 		// Debug
+// 		log.Printf("Uploaded file: %s (Header: %+v)\n", fileHeader.Filename, fileHeader.Header)
+
+// 		// Validasi ukuran file (maks 10 MB)
+// 		if fileHeader.Size > 10<<20 {
+// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "File size exceeds 10MB limit")
+// 		}
+
+// 		// Buat folder upload kalau belum ada
+// 		uploadDir := "uploads"
+// 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+// 			log.Println("Failed to create upload dir:", err)
+// 			return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to create uploads directory")
+// 		}
+
+// 		// Simpan file dengan UUID
+// 		extension := filepath.Ext(fileHeader.Filename)
+// 		newFilename := uuid.New().String() + extension
+// 		destination := filepath.Join(uploadDir, newFilename)
+
+// 		log.Println("Saving file to:", destination)
+
+// 		if err := c.SaveUploadedFile(fileHeader, destination); err != nil {
+// 			log.Println("SaveUploadedFile error:", err)
+// 			return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to save file")
+// 		}
+
+// 		// Isi metadata file
+// 		mimeType := fileHeader.Header.Get("Content-Type")
+// 		size := fileHeader.Size
+
+// 		log.Println("File saved successfully")
+// 		log.Println("MimeType:", mimeType)
+// 		log.Println("Size:", size)
+
+// 		input.FilePath = &destination
+// 		input.MimeType = &mimeType
+// 		input.Size = &size
+// 	} else {
+// 		input.FilePath = nil
+// 		input.MimeType = nil
+// 		input.Size = nil
+// 	}
+
+// 	// Validasi nama unik dalam parent folder
+// 	if err := config.DB.Where("name = ?", input.Name).Where("parent_id = ?", input.ParentID).First(&model.Item{}).Error; err == nil {
+// 		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Item name already exists in this location")
+// 	}
+
+// 	// Validasi tipe item
+// 	allowedTypes := map[model.ItemType]bool{
+// 		model.ItemTypeFolder: true,
+// 		model.ItemTypePdf:    true,
+// 		model.ItemTypeJpg:    true,
+// 		model.ItemTypePng:    true,
+// 	}
+// 	if !allowedTypes[input.Type] {
+// 		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Invalid item type")
+// 	}
+
+// 	// Validasi parent
+// 	if input.ParentID != nil {
+// 		var parent model.Item
+// 		if err := config.DB.First(&parent, *input.ParentID).Error; err != nil {
+// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent folder not found")
+// 		}
+// 		if parent.Type != model.ItemTypeFolder {
+// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent must be a folder")
+// 		}
+// 	}
+
+// 	// Simpan ke database
+// 	if err := config.DB.Create(&input).Error; err != nil {
+// 		// Kalau gagal, hapus file yang sudah diupload
+// 		if input.FilePath != nil {
+// 			_ = os.Remove(*input.FilePath)
+// 		}
+// 		log.Println("DB Create error:", err)
+// 		return utils.SendError(c, http.StatusInternalServerError, "Database error", "Failed to create item")
+// 	}
+
+// 	log.Println("Item created successfully:", input)
+
+// 	return utils.SendSuccess(c, "Item created successfully", input)
+// }
+
+func CreateFile(c echo.Context) error {
+	fmt.Println("CreateFile")
+	// Ambil form value
+	name := c.FormValue("name")
+	parentIDStr := c.FormValue("parentId")
+
+	// Parse parent_id (boleh kosong/null)
+	var parentID *uint
+	if parentIDStr != "" {
+		idParsed, err := strconv.ParseUint(parentIDStr, 10, 64)
+		if err != nil {
+			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Invalid parent_id")
 		}
-		// Pastikan parent memang folder
-		if parent.Type != model.ItemTypeFolder {
-			log.Print(color.RedString("parent is not a folder"))
-			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent must be a folder")
-		}
+		idUint := uint(idParsed)
+		parentID = &idUint
 	}
 
-	// Jika type folder, maka FilePath, MimeType, Size harus null
-	if input.Type == model.ItemTypeFolder {
-		input.FilePath = nil
-		input.MimeType = nil
-		input.Size = nil
+	// Ambil file dari form
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.Println("No file uploaded:", err)
+		return utils.SendError(c, http.StatusBadRequest, "Bad request", "File is required")
 	}
 
-	if err := config.DB.Create(&input).Error; err != nil {
-		log.Print(color.RedString(err.Error()))
-		return utils.SendError(c, http.StatusInternalServerError, "Database error", "Failed to create item")
+	src, err := fileHeader.Open()
+	if err != nil {
+		return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to open file")
+	}
+	defer src.Close()
+
+	// Buat nama file dengan UUID + ekstensi asli
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	if ext == "" {
+		ext = ".bin"
+	}
+	fileName := uuid.NewString() + ext
+	filePath := filepath.Join("uploads", fileName)
+
+	// Pastikan folder uploads ada
+	if err := os.MkdirAll("uploads", 0755); err != nil {
+		return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to create uploads folder")
 	}
 
-	return utils.SendSuccess(c, "Item created successfully", input)
+	// Simpan file
+	dst, err := os.Create(filePath)
+	if err != nil {
+		return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to create file")
+	}
+	defer dst.Close()
+
+	size, err := io.Copy(dst, src)
+	if err != nil {
+		return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to save file")
+	}
+
+	// Ambil mime type
+	mimeType := fileHeader.Header.Get("Content-Type")
+
+	// Tentukan tipe berdasarkan ekstensi
+	var itemType model.ItemType
+	switch ext {
+	case ".pdf":
+		itemType = model.ItemTypePdf
+	case ".jpg", ".jpeg":
+		itemType = model.ItemTypeJpg
+	case ".png":
+		itemType = model.ItemTypePng
+	default:
+		itemType = model.ItemTypeOther // semua jenis file lain masuk sini
+	}
+
+	// Simpan metadata ke DB
+	item := model.Item{
+		Name:     name,
+		ParentID: parentID,
+		Type:     itemType,
+		FilePath: &fileName,
+		MimeType: &mimeType,
+		Size:     &size,
+		IsFolder: false,
+		IsLink:   false,
+	}
+	if err := config.DB.Create(&item).Error; err != nil {
+		return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to save item to DB")
+	}
+
+	return utils.SendSuccess(c, "File created successfully", item)
 }
 
 // GetAllItems handles GET /api/auth/item
@@ -83,6 +240,56 @@ func GetAllItems(c echo.Context) error {
 	}
 
 	return utils.SendSuccess(c, "List of items", items)
+}
+
+func CreateFolder(c echo.Context) error {
+	var folderRequest struct {
+		name       string `json:"name"`
+		parentId   *int   `json:"parentId"`
+		uploadedBy string `json:"uploadedBy"`
+	}
+
+	// binding request body
+	if err_bind := c.Bind(&folderRequest); err_bind != nil {
+		log.Print(color.RedString(err_bind.Error()))
+		return c.JSON((http.StatusBadRequest), map[string]interface{}{
+			"status":  400,
+			"message": "bad request, request body not valid",
+		})
+	}
+
+	// validate empty
+	if folderRequest.name == "" || folderRequest.parentId == nil || folderRequest.uploadedBy == "" {
+		log.Print(color.RedString("name, parentId, uploadedBy cannot be empty"))
+		return c.JSON((http.StatusBadRequest), map[string]interface{}{
+			"status":  400,
+			"message": "bad request, name, parentId, uploadedBy cannot be empty",
+		})
+	}
+
+	// insert data
+	parentID := uint(*folderRequest.parentId)
+	item := model.Item{
+		Name:       folderRequest.name,
+		ParentID:   &parentID,
+		Type:       model.ItemTypeFolder,
+		UploadedBy: nil,
+		IsFolder:   true,
+		IsLink:     false,
+	}
+
+	if err := config.DB.Create(&item).Error; err != nil {
+		log.Print(color.RedString(err.Error()))
+		return c.JSON((http.StatusInternalServerError), map[string]interface{}{
+			"status":  500,
+			"message": "internal server error, failed to create folder",
+		})
+	}
+
+	return c.JSON((http.StatusOK), map[string]interface{}{
+		"status":  200,
+		"message": "success create folder",
+	})
 }
 
 // GetAllItemsAndFolders handles GET /api/auth/item

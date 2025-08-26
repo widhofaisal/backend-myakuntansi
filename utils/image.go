@@ -16,9 +16,33 @@ func Write_image(image multipart.FileHeader, newFileName string, folder string) 
 		return err
 	}
 	defer src.Close()
-	
+
 	directory := "assets/" + folder + "/"
-	
+
+	// Create a destination file on the server
+	dst, err := os.Create(directory + newFileName)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	// Copy the contents of the uploaded file to the destination file
+	if _, err = io.Copy(dst, src); err != nil {
+		return err
+	}
+
+	return err
+}
+
+func WriteFile(file multipart.FileHeader, newFileName string, folder string) error {
+	// Open the uploaded file
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	directory := folder
+
 	// Create a destination file on the server
 	dst, err := os.Create(directory + newFileName)
 	if err != nil {
