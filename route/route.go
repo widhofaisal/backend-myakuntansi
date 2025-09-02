@@ -31,8 +31,13 @@ func New() *echo.Echo {
 	auth := api.Group("/auth")
 	auth.Use(JWTMiddleware())
 
+	// DASHBOARD PAGE
+	auth.GET("/stats", controller.CountDashboard)
+
 	auth.GET("/users", controller.Get_all_admins_and_users)
 	auth.POST("/users", controller.Add_admin_and_user)
+	auth.PUT("/users/:user_id", controller.Update_admin_and_user)
+	auth.DELETE("/users/:user_id", controller.Delete_admin_and_user)
 	
 	auth.POST("/projects", controller.CreateProject)
 	auth.GET("/projects", controller.GetAllProjects)
@@ -42,8 +47,9 @@ func New() *echo.Echo {
 
 	// auth.POST("/items", controller.CreateItem)
 	auth.POST("/file", controller.CreateFile)
+	auth.POST("/link", controller.CreateLink)
 	auth.POST("/folder", controller.CreateFolder)
-	// auth.GET("/items_and_folders/:id", controller.GetAllItemsAndFolders)
+	auth.GET("/items_and_folders/:id", controller.GetAllItemsAndFolders)
 	auth.GET("/items", controller.GetAllItems)
 	auth.GET("/items/:id", controller.GetItemByID)
 	auth.PUT("/items/:id", controller.UpdateItem)

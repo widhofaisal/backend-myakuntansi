@@ -4,6 +4,7 @@ import (
 	"backend-file-management/config"
 	"backend-file-management/model"
 	"backend-file-management/utils"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -14,16 +15,16 @@ import (
 
 // PEGAWAI PAGE
 
-// Endpoint 1 and 2: Get_all_admins_and_employees
+// Endpoint 1 and 2: Get_all_admins_and_users
 func Get_all_admins_and_users(c echo.Context) error {
 	token := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
 	role, _ := utils.Get_role_from_token(token)
 
 	if role != "admin" {
-		log.Print(color.RedString("only admins are allowed"))
+		log.Print(color.RedString("only admin are allowed"))
 		return c.JSON((http.StatusUnauthorized), map[string]interface{}{
 			"status":  401,
-			"message": "unauthorized, only admins are allowed",
+			"message": "unauthorized, only admin are allowed",
 		})
 	}
 
@@ -47,7 +48,7 @@ func Get_all_admins_and_users(c echo.Context) error {
 
 	for _, user := range users {
 		temp := result{
-			Id:       user.ID,
+			Id:       uint(user.ID),
 			Fullname: user.Fullname,
 			Username: user.Username,
 			Role:     user.Role,
@@ -62,16 +63,16 @@ func Get_all_admins_and_users(c echo.Context) error {
 	})
 }
 
-// Endpoint 3 and 4 : Add_admin_and_employee
+// Endpoint 3 and 4 : Add_admin_and_user
 func Add_admin_and_user(c echo.Context) error {
 	token := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
 	role, _ := utils.Get_role_from_token(token)
 
 	if role != "admin" {
-		log.Print(color.RedString("only admins are allowed"))
+		log.Print(color.RedString("only admin are allowed"))
 		return c.JSON((http.StatusUnauthorized), map[string]interface{}{
 			"status":  401,
-			"message": "unauthorized, only admins are allowed",
+			"message": "unauthorized, only admin are allowed",
 		})
 	}
 
@@ -150,44 +151,36 @@ func Add_admin_and_user(c echo.Context) error {
 }
 
 // Endpoint 5 and 6 : Update_admin_and_employee
-func Update_admin_and_employee(c echo.Context) error {
+func Update_admin_and_user(c echo.Context) error {
 	token := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
 	role, _ := utils.Get_role_from_token(token)
 
 	if role != "admin" {
-		log.Print(color.RedString("only admins are allowed"))
+		log.Print(color.RedString("only admin are allowed"))
 		return c.JSON((http.StatusUnauthorized), map[string]interface{}{
 			"status":  401,
-			"message": "unauthorized, only admins are allowed",
+			"message": "unauthorized, only admin are allowed",
 		})
 	}
 
-	user_id := c.Param("user_id")
+	user_id := c.Param("user_id") // get user_id from param
 	var user model.User
 
-	// check : check: role must be between admin or employee
-	accountRole := c.Param("role")
-	if accountRole != "admins" && accountRole != "employees" {
-		log.Print(color.RedString("bad request, only can update account with role 'admins' or 'employees'"))
-		return c.JSON((http.StatusBadRequest), map[string]interface{}{
-			"status":  400,
-			"message": "bad request, only can update account with role 'admins' or 'employees'",
-		})
-	}
-
 	// check is user_id exists and match with accountRole
-	if err_first := config.DB.Where("id=? AND role=?", user_id, accountRole[:len(accountRole)-1]).First(&user).Error; err_first != nil {
+	if err_first := config.DB.Where("id=?", user_id).First(&user).Error; err_first != nil {
 		log.Print(color.RedString(err_first.Error()))
 		return c.JSON((http.StatusBadRequest), map[string]interface{}{
 			"status":  400,
-			"message": "bad request : there is no user_id = " + user_id + " with role = " + accountRole[:len(accountRole)-1],
+			"message": "bad request : there is no user_id = " + user_id,
 		})
 	}
 
 	// define struct only for binding
 	var bindingUser struct {
-		Fullname string `json:"fullname"`
-		Password string `json:"password"`
+		Fullname *string `json:"fullname"`
+		Username *string `json:"username"`
+		Password *string `json:"password"`
+		Role     *string `json:"role"`
 	}
 
 	// binding
@@ -198,25 +191,36 @@ func Update_admin_and_employee(c echo.Context) error {
 			"message": "bad request",
 		})
 	}
+	fmt.Println("bindingUser", &bindingUser)
 
-	// check if request body empty
-	if bindingUser.Fullname == "" {
-		log.Print(color.RedString("request body not valid"))
-		return c.JSON((http.StatusBadRequest), map[string]interface{}{
-			"status":  400,
-			"message": "bad request : request body not valid",
-		})
+	// Update only non-nil fields
+	if bindingUser.Fullname != nil {
+		user.Fullname = *bindingUser.Fullname
 	}
 
-	if bindingUser.Password != "" {
+	if bindingUser.Username != nil {
+		user.Username = *bindingUser.Username
+	}
+
+	if bindingUser.Password != nil && *bindingUser.Password != "" {
 		// hashing password
-		hashedPassword, _ := utils.HashPassword(bindingUser.Password)
+		hashedPassword, _ := utils.HashPassword(*bindingUser.Password)
 		user.Password = hashedPassword
 	}
 
+	if bindingUser.Role != nil {
+		if *bindingUser.Role == "change" {
+			if user.Role == "admin" {
+				user.Role = "user"
+			} else {
+				user.Role = "admin"
+			}
+		} else {
+			user.Role = *bindingUser.Role
+		}
+	}
+
 	// save
-	user.Fullname = bindingUser.Fullname
-	// user.Username = bindingUser.Username
 	if err_save := config.DB.Save(&user).Error; err_save != nil {
 		log.Print(color.RedString(err_save.Error()))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
@@ -227,7 +231,7 @@ func Update_admin_and_employee(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"status":  201,
-		"message": "success to update " + accountRole[:len(accountRole)-1],
+		"message": "success to update user",
 		"data": map[string]interface{}{
 			"id":       user.ID,
 			"fullname": user.Fullname,
@@ -237,38 +241,28 @@ func Update_admin_and_employee(c echo.Context) error {
 	})
 }
 
-// Endpoint 7 and 8 : Delete_admin_and_employee
-func Delete_admin_and_employee(c echo.Context) error {
+// Endpoint 7 and 8 : Delete_admin_and_user
+func Delete_admin_and_user(c echo.Context) error {
 	token := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
 	role, _ := utils.Get_role_from_token(token)
 
 	if role != "admin" {
-		log.Print(color.RedString("only admins are allowed"))
+		log.Print(color.RedString("only admin are allowed"))
 		return c.JSON((http.StatusUnauthorized), map[string]interface{}{
 			"status":  401,
-			"message": "unauthorized, only admins are allowed",
+			"message": "unauthorized, only admin are allowed",
 		})
 	}
 
-	user_id := c.Param("user_id")
+	user_id := c.Param("user_id") // get user_id from param
 	var user model.User
 
-	// check : check: role must be between admin or employee
-	accountRole := c.Param("role")
-	if accountRole != "admins" && accountRole != "employees" {
-		log.Print(color.RedString("bad request, only can update account with role 'admins' or 'employees'"))
-		return c.JSON((http.StatusBadRequest), map[string]interface{}{
-			"status":  400,
-			"message": "bad request, only can update account with role 'admins' or 'employees'",
-		})
-	}
-
 	// check is user_id exists and match with accountRole
-	if err_first := config.DB.Where("id=? AND role=?", user_id, accountRole[:len(accountRole)-1]).First(&user).Error; err_first != nil {
+	if err_first := config.DB.Where("id=?", user_id).First(&user).Error; err_first != nil {
 		log.Print(color.RedString(err_first.Error()))
 		return c.JSON((http.StatusBadRequest), map[string]interface{}{
 			"status":  400,
-			"message": "bad request : there is no user_id = " + user_id + " with role = " + accountRole[:len(accountRole)-1],
+			"message": "bad request : there is no user_id = " + user_id,
 		})
 	}
 
@@ -283,7 +277,7 @@ func Delete_admin_and_employee(c echo.Context) error {
 
 	return c.JSON(http.StatusAccepted, map[string]interface{}{
 		"status":  202,
-		"message": "success to delete account " + accountRole[:len(accountRole)-1],
+		"message": "success to delete user_id = " + user_id,
 		"data": map[string]interface{}{
 			"id":       user.ID,
 			"fullname": user.Fullname,

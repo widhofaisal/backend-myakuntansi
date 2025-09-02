@@ -44,7 +44,7 @@ func Login(c echo.Context) error {
 	}
 
 	// create token
-	token, err := utils.Create_token(user.ID, user.Username, user.Role)
+	token, err := utils.Create_token(uint(user.ID), user.Username, user.Role)
 	if err != nil {
 		log.Print(color.RedString(err.Error()))
 		return utils.SendError(c, http.StatusInternalServerError, "Internal server error", "Failed to generate token")
@@ -54,6 +54,7 @@ func Login(c echo.Context) error {
 	data := map[string]any{
 		"token": token,
 		"user": model.User{
+			ID:       user.ID,
 			Username: user.Username,
 			Role:     user.Role,
 		},
