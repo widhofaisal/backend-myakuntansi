@@ -23,7 +23,7 @@ func New() *echo.Echo {
 	// --------- PUBLIC ROUTES -------
 	// ================================
 	api.GET("/hello", controller.Hello)
-	api.POST("/login", controller.Login)	
+	api.POST("/login", controller.Login)
 
 	// ================================
 	// --------- AUTH ROUTES ---------
@@ -38,7 +38,7 @@ func New() *echo.Echo {
 	auth.POST("/users", controller.Add_admin_and_user)
 	auth.PUT("/users/:user_id", controller.Update_admin_and_user)
 	auth.DELETE("/users/:user_id", controller.Delete_admin_and_user)
-	
+
 	auth.POST("/projects", controller.CreateProject)
 	auth.GET("/projects", controller.GetAllProjects)
 	auth.GET("/projects/:id", controller.GetProjectByID)

@@ -56,6 +56,7 @@ func Login(c echo.Context) error {
 		"user": model.User{
 			ID:       user.ID,
 			Username: user.Username,
+			Fullname: user.Fullname,
 			Role:     user.Role,
 		},
 	}

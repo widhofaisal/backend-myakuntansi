@@ -7,141 +7,18 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"mime"
-
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
-
-// CreateItem handles POST /api/auth/item
-// func CreateItem(c echo.Context) error {
-// 	var input model.Item
-
-// 	// Ambil field dari form
-// 	input.Name = c.FormValue("name")
-// 	input.Type = model.ItemType(c.FormValue("type"))
-
-// 	if parentID := c.FormValue("parent_id"); parentID != "" {
-// 		id, err := strconv.Atoi(parentID)
-// 		if err != nil {
-// 			log.Println("Invalid parent_id:", err)
-// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Invalid parent_id")
-// 		}
-// 		uid := uint(id)
-// 		input.ParentID = &uid
-// 	}
-
-// 	// Debug
-// 	log.Println("=== Form Values ===")
-// 	log.Println("Name:", input.Name)
-// 	log.Println("Type:", input.Type)
-// 	log.Println("ParentID:", input.ParentID)
-
-// 	// Validasi field wajib
-// 	if input.Name == "" || input.Type == "" {
-// 		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Name and Type are required")
-// 	}
-
-// 	// Kalau bukan folder → wajib ada file
-// 	if input.Type != model.ItemTypeFolder {
-// 		fileHeader, err := c.FormFile("file")
-// 		if err != nil {
-// 			log.Println("No file uploaded:", err)
-// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "File is required for non-folder items")
-// 		}
-
-// 		// Debug
-// 		log.Printf("Uploaded file: %s (Header: %+v)\n", fileHeader.Filename, fileHeader.Header)
-
-// 		// Validasi ukuran file (maks 10 MB)
-// 		if fileHeader.Size > 10<<20 {
-// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "File size exceeds 10MB limit")
-// 		}
-
-// 		// Buat folder upload kalau belum ada
-// 		uploadDir := "uploads"
-// 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-// 			log.Println("Failed to create upload dir:", err)
-// 			return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to create uploads directory")
-// 		}
-
-// 		// Simpan file dengan UUID
-// 		extension := filepath.Ext(fileHeader.Filename)
-// 		newFilename := uuid.New().String() + extension
-// 		destination := filepath.Join(uploadDir, newFilename)
-
-// 		log.Println("Saving file to:", destination)
-
-// 		if err := c.SaveUploadedFile(fileHeader, destination); err != nil {
-// 			log.Println("SaveUploadedFile error:", err)
-// 			return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to save file")
-// 		}
-
-// 		// Isi metadata file
-// 		mimeType := fileHeader.Header.Get("Content-Type")
-// 		size := fileHeader.Size
-
-// 		log.Println("File saved successfully")
-// 		log.Println("MimeType:", mimeType)
-// 		log.Println("Size:", size)
-
-// 		input.FilePath = &destination
-// 		input.MimeType = &mimeType
-// 		input.Size = &size
-// 	} else {
-// 		input.FilePath = nil
-// 		input.MimeType = nil
-// 		input.Size = nil
-// 	}
-
-// 	// Validasi nama unik dalam parent folder
-// 	if err := config.DB.Where("name = ?", input.Name).Where("parent_id = ?", input.ParentID).First(&model.Item{}).Error; err == nil {
-// 		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Item name already exists in this location")
-// 	}
-
-// 	// Validasi tipe item
-// 	allowedTypes := map[model.ItemType]bool{
-// 		model.ItemTypeFolder: true,
-// 		model.ItemTypePdf:    true,
-// 		model.ItemTypeJpg:    true,
-// 		model.ItemTypePng:    true,
-// 	}
-// 	if !allowedTypes[input.Type] {
-// 		return utils.SendError(c, http.StatusBadRequest, "Bad request", "Invalid item type")
-// 	}
-
-// 	// Validasi parent
-// 	if input.ParentID != nil {
-// 		var parent model.Item
-// 		if err := config.DB.First(&parent, *input.ParentID).Error; err != nil {
-// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent folder not found")
-// 		}
-// 		if parent.Type != model.ItemTypeFolder {
-// 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent must be a folder")
-// 		}
-// 	}
-
-// 	// Simpan ke database
-// 	if err := config.DB.Create(&input).Error; err != nil {
-// 		// Kalau gagal, hapus file yang sudah diupload
-// 		if input.FilePath != nil {
-// 			_ = os.Remove(*input.FilePath)
-// 		}
-// 		log.Println("DB Create error:", err)
-// 		return utils.SendError(c, http.StatusInternalServerError, "Database error", "Failed to create item")
-// 	}
-
-// 	log.Println("Item created successfully:", input)
-
-// 	return utils.SendSuccess(c, "Item created successfully", input)
-// }
 
 func CreateLink(c echo.Context) error {
 	var folderRequest struct {
@@ -158,6 +35,7 @@ func CreateLink(c echo.Context) error {
 			"message": "bad request, request body not valid",
 		})
 	}
+	fmt.Println("folderRequest:", folderRequest)
 
 	// validate name
 	if folderRequest.Name == "" || folderRequest.FilePath == "" {
@@ -177,29 +55,29 @@ func CreateLink(c echo.Context) error {
 		FilePath: &folderRequest.FilePath,
 	}
 
-	// Set ParentID only if provided and not nil
-	if folderRequest.ParentId != nil {
-		fmt.Println("parentId tidak kosong")
-		parentID := uint(*folderRequest.ParentId)
-		item.ParentID = &parentID
+	parentIDStr := folderRequest.ParentId
+	if parentIDStr != nil && *parentIDStr != 0 {
 
-		// Validasi parent
+		// Validate parent exists and is a folder
 		var parent model.Item
-		if err := config.DB.First(&parent, *folderRequest.ParentId).Error; err != nil {
-			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent folder not found")
+		if err := config.DB.First(&parent, *parentIDStr).Error; err != nil {
+			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent folder not found2")
 		}
-		if parent.Type != model.ItemTypeFolder {
+		if !parent.IsFolder {
 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Parent must be a folder")
 		}
 
-		// Validasi nama unik dalam parent folder
-		if err := config.DB.Where("name = ?", folderRequest.Name).Where("parent_id = ?", folderRequest.ParentId).First(&model.Item{}).Error; err == nil {
-			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Item name already exists in this location")
+		// Check for duplicate name in the same folder
+		var existingItem model.Item
+		if err := config.DB.Where("name = ? AND parent_id = ?", folderRequest.Name, *parentIDStr).First(&existingItem).Error; err == nil {
+			return utils.SendError(c, http.StatusBadRequest, "Bad request", "A file with this name already exists in the destination folder")
 		}
 	} else {
-		fmt.Println("parentId kosong")
-		// Explicitly set to nil if not provided
-		item.ParentID = nil
+		// Check for duplicate name in root folder (where parent_id is NULL)
+		var existingItem model.Item
+		if err := config.DB.Where("name = ? AND parent_id IS NULL", folderRequest.Name).First(&existingItem).Error; err == nil {
+			return utils.SendError(c, http.StatusBadRequest, "Bad request", "A file with this name already exists in the root folder")
+		}
 	}
 
 	// Save to database
@@ -222,11 +100,10 @@ func CreateFile(c echo.Context) error {
 	// Get parentId from form (can be empty/null)
 	parentIDStr := c.FormValue("parentId")
 	originalName := filepath.Base(fileHeader.Filename)
-	fmt.Println("parentIDStr:", parentIDStr)
+
 	// Parse parent_id (can be empty/null)
 	var parentID *uint
 	if parentIDStr != "" && parentIDStr != "0" {
-		fmt.Println("Masuk 1")
 		idParsed, err := strconv.ParseUint(parentIDStr, 10, 64)
 		if err != nil {
 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "Invalid parent_id")
@@ -249,7 +126,6 @@ func CreateFile(c echo.Context) error {
 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "A file with this name already exists in the destination folder")
 		}
 	} else {
-		fmt.Println("Masuk 2")
 		// Check for duplicate name in root folder (where parent_id is NULL)
 		var existingItem model.Item
 		if err := config.DB.Where("name = ? AND parent_id IS NULL", originalName).First(&existingItem).Error; err == nil {
@@ -534,22 +410,55 @@ func UpdateItem(c echo.Context) error {
 	return utils.SendSuccess(c, "Item updated successfully", item)
 }
 
+func deleteItemRecursive(tx *gorm.DB, itemID string) error {
+	// Find children of the current item
+	var children []model.Item
+	if err := tx.Where("parent_id = ?", itemID).Find(&children).Error; err != nil {
+		return err
+	}
+
+	// Recursively delete each child
+	for _, child := range children {
+		childIDStr := strconv.FormatUint(uint64(child.ID), 10)
+		if err := deleteItemRecursive(tx, childIDStr); err != nil {
+			return err
+		}
+	}
+
+	// After deleting all children, delete the item itself
+	if err := tx.Where("id = ?", itemID).Delete(&model.Item{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // DeleteItem handles DELETE /api/auth/item/:id
 func DeleteItem(c echo.Context) error {
 	id := c.Param("id")
-	var item model.Item
 
-	if err := config.DB.First(&item, id).Error; err != nil {
-		log.Print(color.RedString(err.Error()))
-		return utils.SendError(c, http.StatusNotFound, "Not found", "Item not found")
+	// Start a transaction
+	tx := config.DB.Begin()
+	if tx.Error != nil {
+		log.Print(color.RedString(tx.Error.Error()))
+		return utils.SendError(c, http.StatusInternalServerError, "Database error", "Failed to start transaction")
 	}
 
-	if err := config.DB.Delete(&item).Error; err != nil {
+	// Recursively delete the item and its children
+	if err := deleteItemRecursive(tx, id); err != nil {
+		tx.Rollback()
 		log.Print(color.RedString(err.Error()))
-		return utils.SendError(c, http.StatusInternalServerError, "Database error", "Failed to delete item")
+		return utils.SendError(c, http.StatusInternalServerError, "Database error", "Failed to delete item and its children")
 	}
 
-	return utils.SendSuccess(c, "Item deleted successfully", nil)
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		log.Print(color.RedString(err.Error()))
+		return utils.SendError(c, http.StatusInternalServerError, "Database error", "Failed to commit transaction")
+	}
+
+	return utils.SendSuccess(c, "Item and all its children deleted successfully", nil)
 }
 
 // DownloadFile handles GET /api/auth/items/download/:id

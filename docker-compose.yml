@@ -6,6 +6,9 @@ services:
     container_name: file_management_backend
     env_file:
       - .env
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
     ports:
       - "8000:8000"
     depends_on:
