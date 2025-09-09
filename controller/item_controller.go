@@ -56,7 +56,11 @@ func CreateLink(c echo.Context) error {
 	}
 
 	parentIDStr := folderRequest.ParentId
+	fmt.Println("parentIDStr:", parentIDStr)
 	if parentIDStr != nil && *parentIDStr != 0 {
+		fmt.Println("parent id tidak kosong")
+		parentID := uint(*folderRequest.ParentId)
+		item.ParentID = &parentID
 
 		// Validate parent exists and is a folder
 		var parent model.Item
@@ -73,6 +77,7 @@ func CreateLink(c echo.Context) error {
 			return utils.SendError(c, http.StatusBadRequest, "Bad request", "A file with this name already exists in the destination folder")
 		}
 	} else {
+		fmt.Println("parent id kosong")
 		// Check for duplicate name in root folder (where parent_id is NULL)
 		var existingItem model.Item
 		if err := config.DB.Where("name = ? AND parent_id IS NULL", folderRequest.Name).First(&existingItem).Error; err == nil {
@@ -164,8 +169,22 @@ func CreateFile(c echo.Context) error {
 		return utils.SendError(c, http.StatusInternalServerError, "Server error", "Failed to save file")
 	}
 
-	// Get mime type
-	mimeType := fileHeader.Header.Get("Content-Type")
+	// Get mime type using file extension with fallback to Content-Type header
+	mimeType := mime.TypeByExtension(strings.ToLower(ext))
+	if mimeType == "" {
+		mimeType = fileHeader.Header.Get("Content-Type")
+		// If still empty, set default binary MIME type
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+	}
+
+	// Clean up the MIME type by removing any parameters (like charset)
+	if mimeType != "" {
+		if mediaType, _, err := mime.ParseMediaType(mimeType); err == nil {
+			mimeType = mediaType
+		}
+	}
 
 	// Determine item type based on extension
 	var itemType model.ItemType
@@ -245,8 +264,8 @@ func CreateFolder(c echo.Context) error {
 	}
 
 	// Set ParentID only if provided and not nil
-	parentIDStr := c.FormValue("parentId")
-	if parentIDStr != "" && parentIDStr != "0" {
+	fmt.Println("folderRequest.ParentId :", folderRequest.ParentId)
+	if folderRequest.ParentId != nil && *folderRequest.ParentId != 0 {
 		fmt.Println("parentId tidak kosong")
 		parentID := uint(*folderRequest.ParentId)
 		item.ParentID = &parentID

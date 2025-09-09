@@ -13,7 +13,11 @@ func New() *echo.Echo {
 	e := echo.New()
 
 	// Middleware global
-	e.Use(mid.CORS())
+	e.Use(mid.CORSWithConfig(mid.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE, echo.OPTIONS},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+	}))
 	e.Use(middleware.MiddlewareLogging)
 
 	// Root API group: /api/v1
@@ -34,29 +38,31 @@ func New() *echo.Echo {
 	// DASHBOARD PAGE
 	auth.GET("/stats", controller.CountDashboard)
 
+	// USER MANAGEMENT PAGE
 	auth.GET("/users", controller.Get_all_admins_and_users)
 	auth.POST("/users", controller.Add_admin_and_user)
 	auth.PUT("/users/:user_id", controller.Update_admin_and_user)
 	auth.DELETE("/users/:user_id", controller.Delete_admin_and_user)
 
-	auth.POST("/projects", controller.CreateProject)
-	auth.GET("/projects", controller.GetAllProjects)
-	auth.GET("/projects/:id", controller.GetProjectByID)
-	auth.PUT("/projects/:id", controller.UpdateProject)
-	auth.DELETE("/projects/:id", controller.DeleteProject)
+	// auth.POST("/projects", controller.CreateProject)
+	// auth.GET("/projects", controller.GetAllProjects)
+	// auth.GET("/projects/:id", controller.GetProjectByID)
+	// auth.PUT("/projects/:id", controller.UpdateProject)
+	// auth.DELETE("/projects/:id", controller.DeleteProject)
 
-	// auth.POST("/items", controller.CreateItem)
+	// EXPLORER PAGE
 	auth.POST("/file", controller.CreateFile)
 	auth.POST("/link", controller.CreateLink)
 	auth.POST("/folder", controller.CreateFolder)
+
 	auth.GET("/items_and_folders/:id", controller.GetAllItemsAndFolders)
 	auth.GET("/items", controller.GetAllItems)
 	auth.GET("/items/:id", controller.GetItemByID)
+	
 	auth.PUT("/items/:id", controller.UpdateItem)
 	auth.DELETE("/items/:id", controller.DeleteItem)
 	auth.GET("/items/download/:id", controller.DownloadFile)
 
-	// Contoh: auth.GET("/shift", controller.Get_all_shift)
 
 	return e
 }
